@@ -37,6 +37,14 @@ export const useUiStore = create<UiState>()(
       showToast: (message, kind = 'success') => set({ toast: { id: Date.now(), message, kind } }),
       clearToast: () => set({ toast: null }),
     }),
-    { name: 'lacuenta-ui', partialize: (state) => ({ theme: state.theme }) },
+    {
+      name: 'lacuenta-ui',
+      version: 3,
+      migrate: (persistedState, version) => {
+        const state = persistedState as Partial<UiState> | undefined;
+        return { ...state, theme: version < 3 ? 'light' : (state?.theme ?? 'light') } as UiState;
+      },
+      partialize: (state) => ({ theme: state.theme }),
+    },
   ),
 );
