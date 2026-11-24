@@ -1,4 +1,4 @@
-import { BrowserRouter, Navigate, Outlet, Route, Routes } from 'react-router-dom';
+import { HashRouter, Navigate, Outlet, Route, Routes } from 'react-router-dom';
 import { AppLayout } from '@/presentation/layouts/AppLayout';
 import { LoginScreen, RegisterScreen, ResetPasswordScreen } from '@/presentation/screens/auth/AuthScreens';
 import { AccountDetailScreen } from '@/presentation/screens/accounts/AccountDetailScreen';
@@ -24,7 +24,7 @@ function ProtectedRoute() {
 
 export function AppRouter() {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <Routes>
         <Route path="/login" element={<LoginScreen />} />
         <Route path="/register" element={<RegisterScreen />} />
@@ -47,6 +47,6 @@ export function AppRouter() {
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </BrowserRouter>
+    </HashRouter>
   );
 }

@@ -73,6 +73,7 @@ public/                iconos PWA
 - [Dependencias y licencias](docs/dependencies-licenses.md)
 - [Configuración de Firebase](docs/firebase-setup.md)
 - [Instalación en Android e iOS (PWA)](docs/mobile-install.md)
+- [Despliegue en GitHub Pages](docs/github-pages.md)
 - [Versiones de producción](docs/release.md)
 
 ## Licencia
