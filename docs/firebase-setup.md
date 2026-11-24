@@ -39,11 +39,12 @@ Instala Firebase CLI si aún no la tienes (fuera de este repo) y, desde la raíz
 
 ```bash
 firebase login
-firebase use --add   # selecciona TU projectId
 firebase deploy --only firestore
 ```
 
-El repo ya incluye `firebase.json`, que apunta a `firestore.rules` y `firestore.indexes.json`. Tras corregir las reglas hay que volver a desplegarlas; el código de la app no cambia.
+El repo incluye `firebase.json` (apunta a `firestore.rules` y `firestore.indexes.json`) y `.firebaserc` con el projectId, así que **no hace falta** `firebase use --add`: el deploy siempre va al proyecto correcto. Despliega reglas e índices juntos con `--only firestore`.
+
+Si Firestore se creó en modo producción y nunca se desplegaron las reglas, quedan en `allow read, write: if false` y **todo** da `permission-denied` (crear cuenta, crear grupo, estadísticas…). El login sigue funcionando porque Authentication es independiente. Desplegar las reglas es obligatorio, no opcional.
 
 ## 4. Storage
 
@@ -65,6 +66,7 @@ service firebase.storage {
 
 ## 5. Verificación
 
+0. **Confirma el despliegue de reglas:** en Firebase Console → Firestore Database → Reglas debe aparecer `rules_version = '2'` con las funciones `groupPath()`, `memberPath()`, etc., y la fecha de "Última publicación" reciente. Si ves `allow read, write: if false`, las reglas no se han publicado.
 1. Regístrate con email/contraseña en la app.
 2. Comprueba en Firestore que se han creado `users/{uid}`, `categories` y `products` con `ownerId = tu uid`.
 3. Crea una cuenta, añade una consumición y verifica que `totalCents` se actualiza.
@@ -73,7 +75,7 @@ service firebase.storage {
 
 ## 6. Tests de reglas (recomendado)
 
-`scripts/rules-smoke.mjs` comprueba contra el emulador las operaciones críticas: crear un grupo, crear una cuenta con consumición, unirse mediante código de invitación y las consultas usadas por estadísticas e historial.
+`scripts/rules-smoke.mjs` comprueba contra el emulador las operaciones críticas: crear un grupo, crear una cuenta con consumición, el flujo exacto de `createAccount()` con `addDoc` + log, unirse mediante código de invitación y todas las consultas usadas por el detalle de cuenta, estadísticas e historial.
 
 ```bash
 npx --yes -p firebase-tools@13.35.1 firebase emulators:exec --only firestore --project demo-lacuentaporfavor "node scripts/rules-smoke.mjs"

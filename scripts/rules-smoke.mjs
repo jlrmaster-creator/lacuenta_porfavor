@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { assertSucceeds, initializeTestEnvironment } from '@firebase/rules-unit-testing';
-import { arrayUnion, collection, doc, getDocs, getDoc, query, runTransaction, serverTimestamp, where } from 'firebase/firestore';
+import { addDoc, arrayUnion, collection, doc, getDocs, getDoc, query, runTransaction, serverTimestamp, where } from 'firebase/firestore';
 
 const env = await initializeTestEnvironment({
   projectId: 'demo-lacuentaporfavor',
@@ -105,6 +105,43 @@ try {
     }),
   );
   console.log('OK: cuenta individual y consumición permitidas por firestore.rules');
+
+  // AccountDetailScreen observa las consumiciones filtrando por accountId.
+  await assertSucceeds(getDocs(query(collection(db, 'individualConsumptions'), where('accountId', '==', accountId))));
+  await assertSucceeds(getDocs(query(collection(db, 'individualConsumptions'), where('userId', '==', uid))));
+  console.log('OK: consultas de consumiciones individuales por cuenta y por usuario permitidas');
+
+  // Reproducción exacta de FirebaseAccountsRepository.createAccount(): usa addDoc
+  // (dos escrituras separadas con serverTimestamp) y luego addDoc en activityLogs.
+  const newAccountRef = await assertSucceeds(
+    addDoc(collection(db, 'individualAccounts'), {
+      ownerId: uid,
+      venueName: 'Café Central',
+      status: 'open',
+      openedAt: serverTimestamp(),
+      closedAt: null,
+      reopenedAt: null,
+      totalCents: 0,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    }),
+  );
+  await assertSucceeds(
+    addDoc(collection(db, 'activityLogs'), {
+      action: 'account.opened',
+      actorId: uid,
+      accountId: newAccountRef.id,
+      groupId: null,
+      targetId: newAccountRef.id,
+      details: 'Café Central',
+      createdAt: serverTimestamp(),
+    }),
+  );
+  console.log('OK: createAccount() con addDoc + log permitido por firestore.rules');
+
+  // Tras crear, la app navega a /accounts/:id y observa su historial.
+  await assertSucceeds(getDocs(query(collection(db, 'activityLogs'), where('accountId', '==', newAccountRef.id))));
+  console.log('OK: historial de la cuenta recién creada consultable por firestore.rules');
 
   // Unirse a un grupo con invitación: valida invitationPath() y memberPath().
   const otherUid = 'user2';

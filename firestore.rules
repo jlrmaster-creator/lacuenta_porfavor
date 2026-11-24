@@ -137,7 +137,12 @@ service cloud.firestore {
     }
 
     match /individualConsumptions/{consumptionId} {
-      allow read: if signedIn() && resource.data.userId == me();
+      // El detalle de cuenta consulta por accountId (no por userId); esa rama debe
+      // poder evaluarse con la query. Estadísticas consulta por userId.
+      allow read: if signedIn()
+        && (resource.data.userId == me()
+            || (resource.data.accountId is string
+                && get(accountPath(resource.data.accountId)).data.ownerId == me()));
       allow create: if signedIn()
         && request.resource.data.userId == me()
         && request.resource.data.groupId == null
