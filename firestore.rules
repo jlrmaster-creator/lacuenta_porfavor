@@ -1,0 +1,269 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function me() {
+      return request.auth.uid;
+    }
+
+    function dbPath(path) {
+      return /databases/$(database)/documents/$(path);
+    }
+
+    function groupData(groupId) {
+      return get(dbPath('groups/' + groupId)).data;
+    }
+
+    function isMember(groupId) {
+      return signedIn() && exists(dbPath('groups/' + groupId + '/members/' + me()));
+    }
+
+    function isAdmin(groupId) {
+      return isMember(groupId) && get(dbPath('groups/' + groupId + '/members/' + me())).data.role == 'admin';
+    }
+
+    // getAfter permite validar documentos escritos en la MISMA transacción/batch.
+    function isAdminAfter(groupId) {
+      return signedIn() && getAfter(dbPath('groups/' + groupId + '/members/' + me())).data.role == 'admin';
+    }
+
+    function validCents(value) {
+      return value is int && value >= 0 && value <= 1000000;
+    }
+
+    function validQuantity(value) {
+      return value is int && value >= 1 && value <= 99;
+    }
+
+    function validConsumptionData() {
+      return request.resource.data.keys().hasAll([
+        'userId', 'groupId', 'accountId', 'productId', 'productName', 'categoryId',
+        'quantity', 'unitPriceCents', 'subtotalCents', 'note', 'createdAt', 'updatedAt'
+      ])
+      && validQuantity(request.resource.data.quantity)
+      && validCents(request.resource.data.unitPriceCents)
+      && request.resource.data.subtotalCents == request.resource.data.quantity * request.resource.data.unitPriceCents
+      && request.resource.data.note is string
+      && request.resource.data.note.size() <= 200;
+    }
+
+    function unchanged(field) {
+      return !(field in request.resource.data) || request.resource.data[field] == resource.data[field];
+    }
+
+    // ---------- Usuarios ----------
+    match /users/{uid} {
+      allow read: if signedIn() && me() == uid;
+      allow create: if signedIn() && me() == uid
+        && request.resource.data.uid == uid
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.catalogInitialized is bool;
+      allow update: if signedIn() && me() == uid && unchanged('uid') && unchanged('createdAt');
+      allow delete: if false; // evita huérfanos en grupos e historial
+    }
+
+    // ---------- Catálogo ----------
+    match /categories/{categoryId} {
+      allow read: if signedIn() && (resource.data.ownerId == me() || resource.data.ownerId == 'system');
+      allow create: if signedIn()
+        && request.resource.data.ownerId == me()
+        && request.resource.data.active is bool
+        && request.resource.data.createdAt == request.time;
+      allow update: if signedIn() && resource.data.ownerId == me()
+        && request.resource.data.ownerId == me()
+        && unchanged('createdAt');
+      allow delete: if false; // borrado lógico mediante active=false
+    }
+
+    match /products/{productId} {
+      allow read: if signedIn() && (resource.data.ownerId == me() || resource.data.ownerId == 'system');
+      allow create: if signedIn()
+        && request.resource.data.ownerId == me()
+        && request.resource.data.active is bool
+        && (request.resource.data.suggestedPriceCents == null || validCents(request.resource.data.suggestedPriceCents))
+        && request.resource.data.createdAt == request.time;
+      allow update: if signedIn() && resource.data.ownerId == me()
+        && request.resource.data.ownerId == me()
+        && (request.resource.data.suggestedPriceCents == null || validCents(request.resource.data.suggestedPriceCents))
+        && unchanged('createdAt');
+      allow delete: if false;
+    }
+
+    // ---------- Cuentas individuales ----------
+    match /individualAccounts/{accountId} {
+      allow read: if signedIn() && resource.data.ownerId == me();
+      allow create: if signedIn()
+        && request.resource.data.ownerId == me()
+        && request.resource.data.status == 'open'
+        && request.resource.data.totalCents == 0
+        && request.resource.data.openedAt == request.time
+        && request.resource.data.closedAt == null
+        && request.resource.data.createdAt == request.time;
+      allow update: if signedIn() && resource.data.ownerId == me()
+        && unchanged('ownerId') && unchanged('createdAt') && unchanged('openedAt')
+        && (
+          // seguir editando el nombre del establecimiento
+          (resource.data.status == 'open' && request.resource.data.status == 'open')
+          // cerrar o cancelar
+          || (resource.data.status == 'open' && request.resource.data.status in ['paid', 'cancelled']
+              && request.resource.data.closedAt == request.time)
+          // reabrir: acción explícita con marca de tiempo, nunca silenciosa
+          || (resource.data.status == 'paid' && request.resource.data.status == 'open'
+              && request.resource.data.reopenedAt == request.time
+              && request.resource.data.closedAt == null)
+        );
+      allow delete: if false;
+    }
+
+    match /individualConsumptions/{consumptionId} {
+      allow read: if signedIn() && resource.data.userId == me();
+      allow create: if signedIn()
+        && request.resource.data.userId == me()
+        && request.resource.data.groupId == null
+        && request.resource.data.accountId is string
+        && validConsumptionData()
+        && get(dbPath('individualAccounts/' + request.resource.data.accountId)).data.ownerId == me()
+        && get(dbPath('individualAccounts/' + request.resource.data.accountId)).data.status == 'open';
+      allow update: if signedIn()
+        && resource.data.userId == me()
+        && request.resource.data.userId == me()
+        && unchanged('accountId') && unchanged('groupId') && unchanged('createdAt')
+        && validConsumptionData()
+        && get(dbPath('individualAccounts/' + resource.data.accountId)).data.status == 'open';
+      allow delete: if signedIn()
+        && resource.data.userId == me()
+        && get(dbPath('individualAccounts/' + resource.data.accountId)).data.status == 'open';
+    }
+
+    // ---------- Grupos ----------
+    match /groups/{groupId} {
+      allow read: if signedIn() && me() in resource.data.memberUids;
+      allow create: if signedIn()
+        && request.resource.data.createdBy == me()
+        && request.resource.data.status == 'active'
+        && request.resource.data.memberUids == [me()]
+        && request.resource.data.totalCents == 0
+        && request.resource.data.inviteCode is string
+        && request.resource.data.inviteCode.size() == 8
+        && request.resource.data.createdAt == request.time;
+      allow update: if signedIn() && me() in resource.data.memberUids
+        && unchanged('createdBy') && unchanged('createdAt') && unchanged('inviteCode')
+        && (
+          // unirse a uno mismo: solo se añade el uid actual, sin borrar nadie
+          (request.resource.data.memberUids.hasAll(resource.data.memberUids)
+            && request.resource.data.memberUids.size() == resource.data.memberUids.size() + 1
+            && me() in request.resource.data.memberUids
+            && resource.data.status == 'active'
+            && request.resource.data.status == 'active')
+          // administrador: modificar nombre o cerrar cuenta
+          || (isAdmin(groupId) && resource.data.status == 'active'
+              && unchanged('memberUids')
+              && (
+                (request.resource.data.status == 'active' && request.resource.data.name is string)
+                || (resource.data.status == 'active' && request.resource.data.status == 'closed'
+                    && request.resource.data.closedAt == request.time
+                    && me() == resource.data.createdBy)
+              ))
+        );
+      allow delete: if false;
+
+      match /members/{memberUid} {
+        allow read: if isMember(groupId);
+        allow create: if signedIn()
+          && !exists(dbPath('groups/' + groupId + '/members/' + memberUid))
+          && memberUid == me()
+          && getAfter(dbPath('groups/' + groupId)).data.status == 'active'
+          && request.resource.data.groupId == groupId
+          && request.resource.data.joinedAt == request.time
+          && (
+            // el creador se convierte en administrador (grupo escrito en la misma transacción)
+            (request.resource.data.role == 'admin'
+              && getAfter(dbPath('groups/' + groupId)).data.createdBy == me()
+              && request.resource.data.invitedViaCode == null)
+            // los demás needed un código válido (no caducado ni agotado)
+            || (request.resource.data.role == 'member'
+              && request.resource.data.invitedViaCode is string
+              && get(dbPath('invitations/' + request.resource.data.invitedViaCode)).data.groupId == groupId
+              && (get(dbPath('invitations/' + request.resource.data.invitedViaCode)).data.expiresAt == null
+                  || get(dbPath('invitations/' + request.resource.data.invitedViaCode)).data.expiresAt > request.time)
+              && (get(dbPath('invitations/' + request.resource.data.invitedViaCode)).data.maxUses == null
+                  || get(dbPath('invitations/' + request.resource.data.invitedViaCode)).data.uses
+                     < get(dbPath('invitations/' + request.resource.data.invitedViaCode)).data.maxUses))
+          );
+        allow update: if isMember(groupId)
+          && unchanged('groupId') && unchanged('joinedAt') && unchanged('invitedViaCode')
+          && (
+            (memberUid == me() && unchanged('role'))
+            || (isAdmin(groupId) && request.resource.data.role in ['admin', 'member'])
+          );
+        allow delete: if isMember(groupId) && (memberUid == me() || isAdmin(groupId));
+      }
+    }
+
+    match /groupConsumptions/{consumptionId} {
+      allow read: if signedIn() && isMember(resource.data.groupId);
+      allow create: if signedIn()
+        && request.resource.data.userId == me()
+        && request.resource.data.accountId == null
+        && request.resource.data.groupId is string
+        && isMember(request.resource.data.groupId)
+        && groupData(request.resource.data.groupId).status == 'active'
+        && validConsumptionData()
+        && !('correctionLogId' in request.resource.data);
+      allow update: if signedIn()
+        && isMember(resource.data.groupId)
+        && groupData(resource.data.groupId).status == 'active'
+        && unchanged('groupId') && unchanged('userId') && unchanged('accountId') && unchanged('createdAt')
+        && validConsumptionData()
+        && (
+          // el autor corrige lo suyo sin necesidad de log
+          (resource.data.userId == me() && !('correctionLogId' in request.resource.data))
+          // el administrador solo puede corregir si escribe un log en la MISMA transacción
+          || (isAdmin(resource.data.groupId) && resource.data.userId != me()
+              && 'correctionLogId' in request.resource.data
+              && getAfter(dbPath('activityLogs/' + request.resource.data.correctionLogId)).data.actorId == me()
+              && getAfter(dbPath('activityLogs/' + request.resource.data.correctionLogId)).data.action == 'group.consumption_corrected'
+              && getAfter(dbPath('activityLogs/' + request.resource.data.correctionLogId)).data.groupId == resource.data.groupId)
+        );
+      allow delete: if signedIn()
+        && resource.data.userId == me()
+        && isMember(resource.data.groupId)
+        && groupData(resource.data.groupId).status == 'active';
+    }
+
+    match /invitations/{code} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.createdBy == me()
+        && request.resource.data.code == code
+        && request.resource.data.groupId is string
+        && isAdminAfter(request.resource.data.groupId)
+        && request.resource.data.uses == 0
+        && request.resource.data.createdAt == request.time;
+      allow update: if signedIn() && isAdmin(resource.data.groupId)
+        && unchanged('code') && unchanged('groupId') && unchanged('createdBy') && unchanged('createdAt');
+      allow delete: if signedIn() && isAdmin(resource.data.groupId);
+    }
+
+    // ---------- Historial de cambios (inmutable) ----------
+    match /activityLogs/{logId} {
+      allow read: if signedIn() && (
+        (resource.data.accountId != null
+          && get(dbPath('individualAccounts/' + resource.data.accountId)).data.ownerId == me())
+        || (resource.data.groupId != null && isMember(resource.data.groupId))
+      );
+      allow create: if signedIn()
+        && request.resource.data.actorId == me()
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.action is string
+        && request.resource.data.details is string;
+      allow update: if false;
+      allow delete: if false;
+    }
+  }
+}

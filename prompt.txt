@@ -1,0 +1,458 @@
+# PROYECTO: Aplicación móvil para controlar gastos en bares y restaurantes
+
+## 1. CONTEXTO Y ROL
+
+Actúa como un equipo de desarrollo de software senior especializado en aplicaciones móviles multiplataforma, arquitectura de software, Firebase, diseño UX/UI y seguridad.
+
+Tu objetivo es diseñar e implementar una aplicación móvil completa, moderna, intuitiva y escalable para Android y iOS.
+
+La aplicación permitirá registrar consumiciones individuales y compartidas en bares, restaurantes, cafeterías y otros establecimientos.
+
+El usuario podrá anotar cada bebida o comida que pida, consultar el importe acumulado y conocer cuánto debe pagar al finalizar.
+
+También existirá un sistema de grupos en el que varias personas podrán registrar sus propios consumos dentro de una misma cuenta compartida.
+
+## 2. TECNOLOGÍAS Y REQUISITOS TÉCNICOS
+
+- Aplicación compatible con Android e iOS.
+- Utilizar Flutter y Dart para compartir el código entre ambas plataformas.
+- Firebase como infraestructura de backend y base de datos.
+- Utilizar Cloud Firestore para almacenar usuarios, grupos, productos y consumiciones.
+- Firebase Authentication para gestionar los usuarios.
+- Firebase Security Rules para proteger los datos.
+- Utilizar Firebase Storage únicamente si resulta necesario para imágenes.
+- Arquitectura limpia, modular y mantenible.
+- Código open source y dependencias con licencias compatibles con uso comercial.
+- No utilizar SDK, servicios o librerías de pago obligatorios.
+- No instalar ni configurar Firebase por tu cuenta.
+- No crear proyectos Firebase.
+- No modificar ni inventar credenciales.
+- Yo proporcionaré posteriormente la configuración de Firebase.
+- Preparar el proyecto para incorporar los archivos de configuración oficiales cuando los facilite.
+- No incluir claves privadas ni credenciales en el código fuente.
+- Utilizar las versiones estables y compatibles de las dependencias.
+- Documentar las dependencias utilizadas y sus licencias.
+
+## 3. FUNCIONALIDADES PRINCIPALES
+
+### 3.1. Registro y usuarios
+
+Implementar un sistema de usuarios con:
+
+- Registro mediante correo electrónico y contraseña.
+- Inicio de sesión.
+- Recuperación de contraseña.
+- Cierre de sesión.
+- Perfil de usuario.
+- Nombre visible.
+- Fotografía opcional.
+- Identificador único de usuario.
+
+Cada usuario tendrá sus propias consumiciones y podrá participar en diferentes grupos.
+
+### 3.2. Catálogo de productos
+
+La aplicación tendrá un catálogo de productos dividido en dos grandes categorías:
+
+**BEBIDAS**
+- Cerveza.
+- Caña.
+- Doble.
+- Tercio.
+- Botellín.
+- Vino.
+- Copa de vino.
+- Refrescos.
+- Agua.
+- Café.
+- Infusiones.
+- Copas.
+- Cócteles.
+- Otras bebidas.
+
+**COMIDAS**
+- Tapas.
+- Raciones.
+- Bocadillos.
+- Hamburguesas.
+- Sándwiches.
+- Aperitivos.
+- Postres.
+- Otros alimentos.
+
+El catálogo deberá ser configurable.
+
+Cada producto tendrá:
+- Identificador.
+- Nombre.
+- Categoría.
+- Subcategoría.
+- Icono o imagen opcional.
+- Precio orientativo opcional.
+- Estado activo/inactivo.
+
+IMPORTANTE: Los precios no serán necesariamente iguales en todos los bares.
+
+El usuario podrá:
+- Seleccionar un producto del catálogo.
+- Introducir o modificar su precio.
+- Añadir productos personalizados.
+- Crear nuevas categorías.
+- Modificar productos existentes.
+- Eliminar productos de su catálogo personal.
+
+El catálogo deberá permitir búsquedas rápidas y filtros por categoría.
+
+### 3.3. Registro de consumiciones individuales
+
+El usuario podrá crear una nueva cuenta de consumo.
+
+Cada cuenta tendrá:
+- Nombre opcional del establecimiento.
+- Fecha y hora de inicio.
+- Lista de consumiciones.
+- Importe acumulado.
+- Estado: abierta, pagada o cancelada.
+
+Para añadir una consumición:
+
+1. Seleccionar bebidas o comidas.
+2. Seleccionar el producto.
+3. Indicar la cantidad.
+4. Introducir o confirmar el precio unitario.
+5. Añadir una nota opcional.
+6. Confirmar.
+
+La aplicación calculará automáticamente:
+
+Subtotal = cantidad × precio unitario.
+
+Total = suma de todos los subtotales.
+
+La pantalla principal de consumo deberá mostrar:
+
+- Nombre del establecimiento.
+- Lista de productos consumidos.
+- Cantidades.
+- Precios unitarios.
+- Subtotales.
+- Total acumulado.
+
+Incluir botones rápidos para añadir otra unidad de un producto sin repetir todo el proceso.
+
+Permitir editar y eliminar consumiciones.
+
+### 3.4. Cierre y pago de cuenta individual
+
+Cuando el usuario quiera pagar, tendrá acceso a una pantalla de resumen.
+
+Mostrar:
+- Todas las consumiciones.
+- Cantidades.
+- Precios.
+- Importe total.
+- Fecha.
+- Nombre del establecimiento.
+
+Incluir un botón para marcar la cuenta como pagada.
+
+Una cuenta pagada no podrá modificarse accidentalmente. Para modificarla será necesario reabrirla mediante una acción explícita.
+
+Guardar el historial de cuentas cerradas.
+
+### 3.5. Sistema de grupos
+
+Esta es una de las funcionalidades más importantes.
+
+Cualquier usuario podrá crear un grupo.
+
+El usuario que cree el grupo será automáticamente su administrador y organizador.
+
+Cada grupo tendrá:
+- Identificador único.
+- Nombre.
+- Creador.
+- Fecha de creación.
+- Código de invitación único.
+- Miembros.
+- Estado: activo o cerrado.
+
+El creador podrá compartir un código o enlace de invitación para que otros usuarios se unan.
+
+Los demás usuarios podrán:
+- Introducir un código de invitación.
+- Acceder al grupo.
+- Consultar los datos compartidos.
+- Registrar sus propias consumiciones.
+- Consultar su gasto individual.
+- Consultar el gasto total del grupo.
+
+Todos los integrantes podrán crear grupos nuevos. Un usuario podrá pertenecer a varios grupos simultáneamente.
+
+### 3.6. Consumos dentro de un grupo
+
+Cada miembro tendrá su propio registro de consumiciones dentro del grupo.
+
+Cada consumición estará asociada a:
+- Grupo.
+- Usuario que la registra.
+- Producto.
+- Cantidad.
+- Precio unitario.
+- Subtotal.
+- Fecha y hora.
+- Notas opcionales.
+
+Cada persona será responsable de registrar sus propias consumiciones.
+
+El sistema calculará automáticamente:
+
+TOTAL INDIVIDUAL:
+Suma de todas las consumiciones de cada miembro.
+
+TOTAL DEL GRUPO:
+Suma de las consumiciones de todos los miembros.
+
+Ejemplo:
+
+Grupo: Cena del sábado.
+
+- Juan: 3 cervezas (9 €) + hamburguesa (12 €) = 21 €.
+- Pedro: 2 cervezas (6 €) + ración (8 €) = 14 €.
+- María: 1 refresco (3 €) + cena (15 €) = 18 €.
+
+Total del grupo: 53 €.
+
+### 3.7. Panel del administrador del grupo
+
+El creador del grupo tendrá un panel especial.
+
+Podrá consultar:
+
+- Total acumulado del grupo.
+- Total consumido por cada participante.
+- Número de consumiciones por persona.
+- Detalle de todos los productos.
+- Historial de movimientos.
+- Miembros conectados al grupo.
+- Fecha de inicio de la cuenta.
+
+El administrador podrá cerrar la cuenta del grupo.
+
+Al cerrar la cuenta se generará un resumen definitivo con:
+
+1. Total general.
+2. Total de cada participante.
+3. Detalle de consumiciones por participante.
+4. Número total de productos consumidos.
+
+El administrador podrá consultar y compartir el resumen.
+
+IMPORTANTE: El administrador no podrá modificar silenciosamente consumiciones de otros usuarios. Cualquier corrección deberá quedar registrada en un historial de cambios.
+
+### 3.8. Actualización en tiempo real
+
+Utilizar los mecanismos de actualización en tiempo real de Firebase Firestore.
+
+Cuando un integrante registre una consumición, el resto de miembros deberá poder ver la actualización sin tener que recargar manualmente.
+
+Actualizar automáticamente:
+- Total individual.
+- Total general.
+- Listado de consumiciones.
+- Número de participantes.
+- Estado de la cuenta.
+
+### 3.9. Historial y estadísticas
+
+Incluir una sección de historial donde cada usuario pueda consultar:
+
+- Cuentas individuales anteriores.
+- Grupos anteriores.
+- Fecha.
+- Establecimiento.
+- Importe total.
+- Consumo individual.
+- Estado de pago.
+
+Incluir estadísticas básicas:
+- Gasto total semanal.
+- Gasto total mensual.
+- Gasto por categoría.
+- Gasto medio por salida.
+- Bebidas y comidas más consumidas.
+
+## 4. DISEÑO UX/UI
+
+Crear una interfaz moderna, atractiva, sencilla y muy rápida de utilizar.
+
+Priorizar que añadir una consumición requiera el mínimo número de pulsaciones posible.
+
+Características:
+- Diseño mobile-first.
+- Compatible con diferentes tamaños de pantalla.
+- Navegación intuitiva.
+- Interfaz en español.
+- Moneda predeterminada: euro (€).
+- Formato de precios español.
+- Modo claro y oscuro.
+- Iconos intuitivos.
+- Botones grandes y accesibles.
+- Animaciones discretas.
+- Feedback visual al añadir productos.
+- Diseño consistente en todas las pantallas.
+
+Propuesta de navegación inferior:
+
+1. Inicio.
+2. Nueva cuenta.
+3. Grupos.
+4. Historial.
+5. Perfil.
+
+La pantalla de una cuenta abierta deberá destacar visualmente el importe total acumulado.
+
+## 5. SEGURIDAD Y PERMISOS
+
+Implementar reglas de seguridad de Firebase.
+
+- Cada usuario podrá modificar sus propios datos.
+- Los miembros solo podrán acceder a grupos de los que formen parte.
+- Cada usuario podrá registrar sus propias consumiciones.
+- Solo el administrador podrá cerrar el grupo.
+- Solo el administrador podrá gestionar determinadas opciones del grupo.
+- No permitir accesos mediante códigos de invitación inválidos.
+- Evitar que un usuario pueda modificar consumiciones de otro sin autorización.
+- Validar todos los importes y cantidades.
+- Evitar operaciones duplicadas.
+- Utilizar transacciones cuando sean necesarias.
+- Evitar que usuarios no autenticados accedan a información privada.
+
+La seguridad no debe depender únicamente de las validaciones de la interfaz. Debe aplicarse también en Firestore Security Rules.
+
+## 6. ESTRUCTURA DE DATOS
+
+Diseñar una estructura de Firestore escalable.
+
+Como mínimo, contemplar las siguientes colecciones:
+
+- users
+- products
+- categories
+- individualAccounts
+- individualConsumptions
+- groups
+- groupMembers
+- groupConsumptions
+- invitations
+- activityLogs
+
+Cada documento deberá disponer de identificadores, fechas de creación y actualización cuando corresponda.
+
+Definir correctamente las relaciones entre usuarios, grupos, cuentas y consumiciones.
+
+Evitar duplicaciones innecesarias.
+
+Utilizar importes monetarios con precisión decimal, evitando errores de coma flotante. Preferiblemente almacenar los importes en céntimos como números enteros.
+
+Documentar la estructura completa de Firestore y sus índices necesarios.
+
+## 7. ARQUITECTURA DEL PROYECTO
+
+Organizar el proyecto de manera modular.
+
+Separar:
+- Modelos.
+- Repositorios.
+- Servicios.
+- Lógica de negocio.
+- Gestión de estado.
+- Pantallas.
+- Componentes reutilizables.
+- Navegación.
+- Configuración.
+- Autenticación.
+- Firebase.
+
+Utilizar una solución de gestión de estado mantenible y ampliamente adoptada en Flutter.
+
+Evitar concentrar toda la lógica en los widgets.
+
+## 8. TESTING Y CALIDAD
+
+Implementar:
+- Tests unitarios para cálculos.
+- Tests de lógica de grupos.
+- Tests de registro de consumiciones.
+- Tests de permisos.
+- Tests de integración cuando sea posible.
+- Validación de importes y cantidades.
+- Pruebas de sincronización en tiempo real.
+- Manejo de errores de conexión.
+- Estados de carga y errores.
+
+Comprobar especialmente que:
+- Los totales individuales son correctos.
+- El total del grupo coincide con la suma de sus integrantes.
+- No se duplican consumiciones.
+- No se pierden datos.
+- Los permisos funcionan correctamente.
+- Los cambios se sincronizan entre dispositivos.
+
+## 9. DOCUMENTACIÓN Y ENTREGA
+
+Entregar:
+
+1. Código fuente completo.
+2. Proyecto Flutter organizado.
+3. Archivo README con instrucciones.
+4. Listado de dependencias y licencias.
+5. Esquema de Firestore.
+6. Reglas de seguridad.
+7. Índices necesarios.
+8. Instrucciones para configurar Firebase cuando facilite las credenciales.
+9. Instrucciones para ejecutar en Android.
+10. Instrucciones para ejecutar en iOS.
+11. Tests automatizados.
+12. Guía para generar versiones de producción.
+
+No simular funcionalidades que todavía no estén implementadas.
+
+No entregar únicamente prototipos visuales.
+
+## 10. FORMA DE TRABAJO
+
+Trabaja por fases.
+
+FASE 1: Arquitectura y diseño de la aplicación.
+
+FASE 2: Implementación de la interfaz y navegación.
+
+FASE 3: Modelos y lógica de negocio.
+
+FASE 4: Integración de Firebase, dejando preparada la conexión para incorporar mi configuración.
+
+FASE 5: Sistema de cuentas individuales.
+
+FASE 6: Sistema de grupos y sincronización en tiempo real.
+
+FASE 7: Panel de administración y cierre de cuentas.
+
+FASE 8: Historial, estadísticas y mejoras.
+
+FASE 9: Seguridad y pruebas.
+
+FASE 10: Documentación y preparación para producción.
+
+Al terminar cada fase:
+- Explica qué has implementado.
+- Indica los archivos creados o modificados.
+- Ejecuta las pruebas disponibles.
+- Informa de los problemas detectados.
+- No continúes si existen errores críticos pendientes.
+
+Antes de empezar, presenta la arquitectura propuesta y la estructura de carpetas.
+
+No te limites a describir lo que harías: implementa el código real de cada funcionalidad.
+
+El resultado debe ser una aplicación funcional, segura, intuitiva y preparada para evolucionar comercialmente.
