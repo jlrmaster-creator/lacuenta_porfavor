@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { parseEuroToCents } from '@/core/money';
 import { DEFAULT_CATEGORIES, DEFAULT_PRODUCTS } from '@/domain/services/catalog';
 import {
   accountSchema,
@@ -42,6 +43,14 @@ describe('validaciones', () => {
     expect(productSchema.safeParse({ name: 'Caña', categoryId: 'c1', subcategory: '', suggestedPriceInput: '', icon: '🍺' }).success).toBe(true);
     expect(categorySchema.safeParse({ name: 'Bebidas', kind: 'drink', icon: '🍺' }).success).toBe(true);
     expect(categorySchema.safeParse({ name: '', kind: 'drink', icon: '🍺' }).success).toBe(false);
+  });
+
+  it('acepta el precio orientativo de un producto en euros con coma', () => {
+    const draft = { name: 'Caña', categoryId: 'c1', subcategory: '', suggestedPriceInput: '3,50', icon: '🍺' };
+    const parsed = productSchema.safeParse(draft);
+    expect(parsed.success).toBe(true);
+    if (parsed.success) expect(parseEuroToCents(parsed.data.suggestedPriceInput)).toBe(350);
+    expect(productSchema.safeParse({ ...draft, priceInput: '3,50', suggestedPriceInput: undefined }).success).toBe(false);
   });
 
   it('el catálogo base contiene todos los productos del enunciado', () => {

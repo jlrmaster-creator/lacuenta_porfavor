@@ -3,20 +3,12 @@ import { Pencil, Plus, Trash2, X } from 'lucide-react';
 import { formatCents, parseEuroToCents } from '@/core/money';
 import type { Product } from '@/domain/entities';
 import { categoryKindLabel } from '@/domain/services/catalog';
-import { categorySchema, productSchema } from '@/domain/services/validators';
+import { categorySchema, productSchema, type ProductForm } from '@/domain/services/validators';
 import { Banner, Button, Card, Field, Spinner } from '@/presentation/components/ui';
 import { useAction, useAuth, useCatalog } from '@/state/hooks';
 import { catalogRepository } from '@/state/repositories';
 
-interface ProductDraft {
-  name: string;
-  categoryId: string;
-  subcategory: string;
-  priceInput: string;
-  icon: string;
-}
-
-const emptyDraft: ProductDraft = { name: '', categoryId: '', subcategory: '', priceInput: '', icon: '🍴' };
+const emptyDraft: ProductForm = { name: '', categoryId: '', subcategory: '', suggestedPriceInput: '', icon: '🍴' };
 
 export function CatalogScreen() {
   const { categories, products, loading, error } = useCatalog();
@@ -26,7 +18,7 @@ export function CatalogScreen() {
   const [filter, setFilter] = useState('all');
   const [sheet, setSheet] = useState<'product' | 'category' | null>(null);
   const [editing, setEditing] = useState<Product | null>(null);
-  const [draft, setDraft] = useState<ProductDraft>(emptyDraft);
+  const [draft, setDraft] = useState<ProductForm>(emptyDraft);
   const [catDraft, setCatDraft] = useState({ name: '', kind: 'drink' as 'drink' | 'food' | 'other', icon: '🥤' });
   const [formError, setFormError] = useState('');
 
@@ -43,7 +35,7 @@ export function CatalogScreen() {
       name: product.name,
       categoryId: product.categoryId,
       subcategory: product.subcategory,
-      priceInput: product.suggestedPriceCents !== null ? (product.suggestedPriceCents / 100).toFixed(2).replace('.', ',') : '',
+      suggestedPriceInput: product.suggestedPriceCents !== null ? (product.suggestedPriceCents / 100).toFixed(2).replace('.', ',') : '',
       icon: product.icon,
     } : { ...emptyDraft, categoryId: categories[0]?.id ?? '' });
     setFormError('');
@@ -159,7 +151,7 @@ export function CatalogScreen() {
                 <Field label="Subcategoría"><input value={draft.subcategory} onChange={(e) => setDraft({ ...draft, subcategory: e.target.value })} /></Field>
                 <div className="row">
                   <div className="field" style={{ flex: 1 }}><label>Icono</label><input value={draft.icon} maxLength={8} onChange={(e) => setDraft({ ...draft, icon: e.target.value })} /></div>
-                  <div className="field" style={{ flex: 1 }}><label>Precio orientativo (€)</label><input inputMode="decimal" value={draft.priceInput} onChange={(e) => setDraft({ ...draft, priceInput: e.target.value })} placeholder="Opcional" /></div>
+                  <div className="field" style={{ flex: 1 }}><label>Precio orientativo (€)</label><input inputMode="decimal" value={draft.suggestedPriceInput} onChange={(e) => setDraft({ ...draft, suggestedPriceInput: e.target.value })} placeholder="Opcional" /></div>
                 </div>
                 <Button block size="lg" onClick={() => void saveProduct()} loading={pending}>Guardar producto</Button>
               </div>
