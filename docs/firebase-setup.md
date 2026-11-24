@@ -40,19 +40,10 @@ Instala Firebase CLI si aún no la tienes (fuera de este repo) y, desde la raíz
 ```bash
 firebase login
 firebase use --add   # selecciona TU projectId
-firebase deploy --only firestore:rules,firestore:indexes
+firebase deploy --only firestore
 ```
 
-Si no tienes `firebase.json`, créalo con:
-
-```json
-{
-  "firestore": {
-    "rules": "firestore.rules",
-    "indexes": "firestore.indexes.json"
-  }
-}
-```
+El repo ya incluye `firebase.json`, que apunta a `firestore.rules` y `firestore.indexes.json`. Tras corregir las reglas hay que volver a desplegarlas; el código de la app no cambia.
 
 ## 4. Storage
 
@@ -82,11 +73,12 @@ service firebase.storage {
 
 ## 6. Tests de reglas (recomendado)
 
-Con el emulador de Firestore:
+`scripts/rules-smoke.mjs` comprueba contra el emulador las operaciones críticas: crear un grupo, crear una cuenta con consumición y unirse mediante código de invitación.
 
 ```bash
-firebase emulators:start --only firestore,auth
-# en otra terminal: firebase emulators:exec --only firestore "npm test"
+npx --yes -p firebase-tools@13.35.1 firebase emulators:exec --only firestore --project demo-lacuentaporfavor "node scripts/rules-smoke.mjs"
 ```
 
-Los tests unitarios actuales validan la lógica de permisos en TypeScript (`test/unit/permissions.test.ts`); las reglas en sí deben verificarse con el emulador usando un `projectId` de prueba, sin credenciales reales.
+Se usa una versión fija de Firebase CLI compatible con JDK 17. Si tienes JDK 21 o superior, también sirve la CLI instalada en tu máquina. El emulador usa un `projectId` de prueba, sin credenciales reales.
+
+Los tests unitarios validan además la lógica de permisos en TypeScript (`test/unit/permissions.test.ts`).

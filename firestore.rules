@@ -11,25 +11,41 @@ service cloud.firestore {
       return request.auth.uid;
     }
 
-    function dbPath(path) {
-      return /databases/$(database)/documents/$(path);
+    function groupPath(groupId) {
+      return /databases/$(database)/documents/groups/$(groupId);
+    }
+
+    function memberPath(groupId, uid) {
+      return /databases/$(database)/documents/groups/$(groupId)/members/$(uid);
+    }
+
+    function accountPath(accountId) {
+      return /databases/$(database)/documents/individualAccounts/$(accountId);
+    }
+
+    function invitationPath(code) {
+      return /databases/$(database)/documents/invitations/$(code);
+    }
+
+    function activityPath(logId) {
+      return /databases/$(database)/documents/activityLogs/$(logId);
     }
 
     function groupData(groupId) {
-      return get(dbPath('groups/' + groupId)).data;
+      return get(groupPath(groupId)).data;
     }
 
     function isMember(groupId) {
-      return signedIn() && exists(dbPath('groups/' + groupId + '/members/' + me()));
+      return signedIn() && exists(memberPath(groupId, me()));
     }
 
     function isAdmin(groupId) {
-      return isMember(groupId) && get(dbPath('groups/' + groupId + '/members/' + me())).data.role == 'admin';
+      return isMember(groupId) && get(memberPath(groupId, me())).data.role == 'admin';
     }
 
     // getAfter permite validar documentos escritos en la MISMA transacción/batch.
     function isAdminAfter(groupId) {
-      return signedIn() && getAfter(dbPath('groups/' + groupId + '/members/' + me())).data.role == 'admin';
+      return signedIn() && getAfter(memberPath(groupId, me())).data.role == 'admin';
     }
 
     function validCents(value) {
@@ -127,17 +143,17 @@ service cloud.firestore {
         && request.resource.data.groupId == null
         && request.resource.data.accountId is string
         && validConsumptionData()
-        && get(dbPath('individualAccounts/' + request.resource.data.accountId)).data.ownerId == me()
-        && get(dbPath('individualAccounts/' + request.resource.data.accountId)).data.status == 'open';
+        && get(accountPath(request.resource.data.accountId)).data.ownerId == me()
+        && get(accountPath(request.resource.data.accountId)).data.status == 'open';
       allow update: if signedIn()
         && resource.data.userId == me()
         && request.resource.data.userId == me()
         && unchanged('accountId') && unchanged('groupId') && unchanged('createdAt')
         && validConsumptionData()
-        && get(dbPath('individualAccounts/' + resource.data.accountId)).data.status == 'open';
+        && get(accountPath(resource.data.accountId)).data.status == 'open';
       allow delete: if signedIn()
         && resource.data.userId == me()
-        && get(dbPath('individualAccounts/' + resource.data.accountId)).data.status == 'open';
+        && get(accountPath(resource.data.accountId)).data.status == 'open';
     }
 
     // ---------- Grupos ----------
@@ -151,13 +167,14 @@ service cloud.firestore {
         && request.resource.data.inviteCode is string
         && request.resource.data.inviteCode.size() == 8
         && request.resource.data.createdAt == request.time;
-      allow update: if signedIn() && me() in resource.data.memberUids
+      allow update: if signedIn()
         && unchanged('createdBy') && unchanged('createdAt') && unchanged('inviteCode')
         && (
-          // unirse a uno mismo: solo se añade el uid actual, sin borrar nadie
+          // unirse a uno mismo: todavía no eres miembro y solo se añade tu uid
           (request.resource.data.memberUids.hasAll(resource.data.memberUids)
             && request.resource.data.memberUids.size() == resource.data.memberUids.size() + 1
             && me() in request.resource.data.memberUids
+            && !(me() in resource.data.memberUids)
             && resource.data.status == 'active'
             && request.resource.data.status == 'active')
           // administrador: modificar nombre o cerrar cuenta
@@ -175,25 +192,25 @@ service cloud.firestore {
       match /members/{memberUid} {
         allow read: if isMember(groupId);
         allow create: if signedIn()
-          && !exists(dbPath('groups/' + groupId + '/members/' + memberUid))
+          && !exists(memberPath(groupId, memberUid))
           && memberUid == me()
-          && getAfter(dbPath('groups/' + groupId)).data.status == 'active'
+          && getAfter(groupPath(groupId)).data.status == 'active'
           && request.resource.data.groupId == groupId
           && request.resource.data.joinedAt == request.time
           && (
             // el creador se convierte en administrador (grupo escrito en la misma transacción)
             (request.resource.data.role == 'admin'
-              && getAfter(dbPath('groups/' + groupId)).data.createdBy == me()
+              && getAfter(groupPath(groupId)).data.createdBy == me()
               && request.resource.data.invitedViaCode == null)
             // los demás needed un código válido (no caducado ni agotado)
             || (request.resource.data.role == 'member'
               && request.resource.data.invitedViaCode is string
-              && get(dbPath('invitations/' + request.resource.data.invitedViaCode)).data.groupId == groupId
-              && (get(dbPath('invitations/' + request.resource.data.invitedViaCode)).data.expiresAt == null
-                  || get(dbPath('invitations/' + request.resource.data.invitedViaCode)).data.expiresAt > request.time)
-              && (get(dbPath('invitations/' + request.resource.data.invitedViaCode)).data.maxUses == null
-                  || get(dbPath('invitations/' + request.resource.data.invitedViaCode)).data.uses
-                     < get(dbPath('invitations/' + request.resource.data.invitedViaCode)).data.maxUses))
+              && get(invitationPath(request.resource.data.invitedViaCode)).data.groupId == groupId
+              && (get(invitationPath(request.resource.data.invitedViaCode)).data.expiresAt == null
+                  || get(invitationPath(request.resource.data.invitedViaCode)).data.expiresAt > request.time)
+              && (get(invitationPath(request.resource.data.invitedViaCode)).data.maxUses == null
+                  || get(invitationPath(request.resource.data.invitedViaCode)).data.uses
+                     < get(invitationPath(request.resource.data.invitedViaCode)).data.maxUses))
           );
         allow update: if isMember(groupId)
           && unchanged('groupId') && unchanged('joinedAt') && unchanged('invitedViaCode')
@@ -226,9 +243,9 @@ service cloud.firestore {
           // el administrador solo puede corregir si escribe un log en la MISMA transacción
           || (isAdmin(resource.data.groupId) && resource.data.userId != me()
               && 'correctionLogId' in request.resource.data
-              && getAfter(dbPath('activityLogs/' + request.resource.data.correctionLogId)).data.actorId == me()
-              && getAfter(dbPath('activityLogs/' + request.resource.data.correctionLogId)).data.action == 'group.consumption_corrected'
-              && getAfter(dbPath('activityLogs/' + request.resource.data.correctionLogId)).data.groupId == resource.data.groupId)
+              && getAfter(activityPath(request.resource.data.correctionLogId)).data.actorId == me()
+              && getAfter(activityPath(request.resource.data.correctionLogId)).data.action == 'group.consumption_corrected'
+              && getAfter(activityPath(request.resource.data.correctionLogId)).data.groupId == resource.data.groupId)
         );
       allow delete: if signedIn()
         && resource.data.userId == me()
@@ -254,7 +271,7 @@ service cloud.firestore {
     match /activityLogs/{logId} {
       allow read: if signedIn() && (
         (resource.data.accountId != null
-          && get(dbPath('individualAccounts/' + resource.data.accountId)).data.ownerId == me())
+          && get(accountPath(resource.data.accountId)).data.ownerId == me())
         || (resource.data.groupId != null && isMember(resource.data.groupId))
       );
       allow create: if signedIn()

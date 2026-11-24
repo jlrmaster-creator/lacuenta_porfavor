@@ -26,6 +26,7 @@ Todas las dependencias directas usan licencias permisivas compatibles con uso co
 | `@vitejs/plugin-react` | 5.2.0 | MIT | Plugin React |
 | `vite-plugin-pwa` | 2.0.0 | MIT | Service worker y manifiesto |
 | `vitest` | 5.1.1 | MIT | Tests |
+| `@firebase/rules-unit-testing` | 5.0.2 | Apache-2.0 | Tests de reglas con emulador |
 | `jsdom` | 26.1.0 | MIT | DOM de prueba |
 | `@testing-library/react` | 16.3.3 | MIT | Tests de componentes |
 | `@testing-library/jest-dom` | 6.9.1 | MIT | Matchers de DOM |
