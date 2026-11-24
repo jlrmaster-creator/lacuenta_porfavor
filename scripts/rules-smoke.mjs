@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { assertSucceeds, initializeTestEnvironment } from '@firebase/rules-unit-testing';
-import { arrayUnion, doc, getDoc, runTransaction, serverTimestamp } from 'firebase/firestore';
+import { arrayUnion, collection, doc, getDocs, getDoc, query, runTransaction, serverTimestamp, where } from 'firebase/firestore';
 
 const env = await initializeTestEnvironment({
   projectId: 'demo-lacuentaporfavor',
@@ -127,6 +127,50 @@ try {
     }),
   );
   console.log('OK: unión por código de invitación permitida por firestore.rules');
+
+  // Estadísticas: consulta de consumiciones de grupo por userId.
+  await assertSucceeds(
+    runTransaction(db, async (tx) => {
+      const now = serverTimestamp();
+      tx.set(doc(db, 'groupConsumptions/cg1'), {
+        accountId: null,
+        groupId,
+        userId: uid,
+        productId: 'p1',
+        productName: 'Caña',
+        categoryId: 'c1',
+        quantity: 1,
+        unitPriceCents: 350,
+        subtotalCents: 350,
+        note: '',
+        createdAt: now,
+        updatedAt: now,
+      });
+    }),
+  );
+  await assertSucceeds(getDocs(query(collection(db, 'groupConsumptions'), where('userId', '==', uid))));
+  console.log('OK: consulta de consumiciones de grupo por usuario permitida por firestore.rules');
+
+  await assertSucceeds(getDocs(query(collection(db, 'groupConsumptions'), where('groupId', '==', groupId))));
+  console.log('OK: consulta de consumiciones por grupo permitida por firestore.rules');
+
+  // Historial de actividad: consultas por cuenta y por grupo.
+  await assertSucceeds(
+    runTransaction(db, async (tx) => {
+      tx.set(doc(db, 'activityLogs/log2'), {
+        action: 'consumption.added',
+        actorId: uid,
+        groupId: null,
+        accountId,
+        targetId: 'c1',
+        details: 'Consumición añadida',
+        createdAt: serverTimestamp(),
+      });
+    }),
+  );
+  await assertSucceeds(getDocs(query(collection(db, 'activityLogs'), where('accountId', '==', accountId))));
+  await assertSucceeds(getDocs(query(collection(db, 'activityLogs'), where('groupId', '==', groupId))));
+  console.log('OK: consultas de historial por cuenta y por grupo permitidas por firestore.rules');
 } finally {
   await env.cleanup();
 }

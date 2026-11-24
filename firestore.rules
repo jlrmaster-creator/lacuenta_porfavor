@@ -223,7 +223,10 @@ service cloud.firestore {
     }
 
     match /groupConsumptions/{consumptionId} {
-      allow read: if signedIn() && isMember(resource.data.groupId);
+      // La consulta de estadísticas filtra por userId; esa rama debe poder evaluarse
+      // sin get() por documento. La pertenencia al grupo se mantiene para el detalle.
+      allow read: if signedIn()
+        && (resource.data.userId == me() || isMember(resource.data.groupId));
       allow create: if signedIn()
         && request.resource.data.userId == me()
         && request.resource.data.accountId == null

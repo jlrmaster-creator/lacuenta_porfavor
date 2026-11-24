@@ -73,7 +73,7 @@ service firebase.storage {
 
 ## 6. Tests de reglas (recomendado)
 
-`scripts/rules-smoke.mjs` comprueba contra el emulador las operaciones críticas: crear un grupo, crear una cuenta con consumición y unirse mediante código de invitación.
+`scripts/rules-smoke.mjs` comprueba contra el emulador las operaciones críticas: crear un grupo, crear una cuenta con consumición, unirse mediante código de invitación y las consultas usadas por estadísticas e historial.
 
 ```bash
 npx --yes -p firebase-tools@13.35.1 firebase emulators:exec --only firestore --project demo-lacuentaporfavor "node scripts/rules-smoke.mjs"
